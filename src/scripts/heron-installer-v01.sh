@@ -6,6 +6,11 @@ HDI_HELPER_SOURCE=https://hdiconfigactions.blob.core.windows.net/linuxconfigacti
 echo "Downloading helper functions: $HDI_HELPER_SOURCE/$HDI_HELPER_FILE_NAME"
 wget -O /tmp/$HDI_HELPER_FILE_NAME -q $HDI_HELPER_SOURCE/$HDI_HELPER_FILE_NAME && source /tmp/$HDI_HELPER_FILE_NAME && rm -f /tmp/$HDI_HELPER_FILE_NAME
 
+#########################################
+# Actions common to both node types below
+#########################################
+for x in kazoo APScheduler argh futures pathtools pytz requests retrying setuptools six tzlocal watchdog PyYAML; do pip uninstall -y $x;  pip install $x; done
+chmod +r /usr/local/lib/python2.7/dist-packages/pip-9.0.1.dist-info
 
 #########################################
 # Data node specific actions below
@@ -22,7 +27,7 @@ fi
 
 # Parse options to the installer, zookeeper host and heron version to be installed
 ZK_HOSTS="zk0-heron"
-HERON_VERSION="0.14.6"
+HERON_VERSION="0.17.4"
 OVERWRITE=false
 while getopts ":z:v:f" opt; do
   case $opt in
@@ -73,20 +78,13 @@ fi
 
 # Fetch and install heron client and tools
 DOWNLOAD_SOURCE_URL="https://github.com/twitter/heron/releases/download/$HERON_VERSION/"
-HERON_CLIENT_INSTALLER="heron-client-install-$HERON_VERSION-ubuntu.sh"
-HERON_TOOLS_INSTALLER="heron-tools-install-$HERON_VERSION-ubuntu.sh"
+HERON_CLIENT_INSTALLER="heron-install-$HERON_VERSION-ubuntu.sh"
 
 echo "Downloading and installing Heron client: $DOWNLOAD_SOURCE_URL/$HERON_CLIENT_INSTALLER"
 download_file $DOWNLOAD_SOURCE_URL/$HERON_CLIENT_INSTALLER /tmp/$HERON_CLIENT_INSTALLER
 chmod +x /tmp/$HERON_CLIENT_INSTALLER
-/tmp/$HERON_CLIENT_INSTALLER --prefix=$TARGET_INSTALL_DIR --heronrc=$TARGET_INSTALL_DIR/.heronrc
+/tmp/$HERON_CLIENT_INSTALLER --prefix=$TARGET_INSTALL_DIR
 rm -f /tmp/$HERON_CLIENT_INSTALLER
-
-echo "Downloading and installing Heron tools: $DOWNLOAD_SOURCE_URL/$HERON_TOOLS_INSTALLER"
-download_file $DOWNLOAD_SOURCE_URL/$HERON_TOOLS_INSTALLER /tmp/$HERON_TOOLS_INSTALLER
-chmod +x /tmp/$HERON_TOOLS_INSTALLER
-/tmp/$HERON_TOOLS_INSTALLER --prefix=$TARGET_INSTALL_DIR
-rm -f /tmp/$HERON_TOOLS_INSTALLER
 
 echo "Creating links to Heron binaries."
 ln -sf $TARGET_INSTALL_DIR/bin/heron /usr/bin/heron
@@ -108,9 +106,9 @@ heron.statemgr.zookeeper.retry.count: 10
 heron.statemgr.zookeeper.retry.interval.ms: 10000
 EOL
 
-TOOLS_CONF_FILE="$TARGET_INSTALL_DIR/herontools/conf/heron_tracker.yaml"
-echo "Creating tools conf file: $TOOLS_CONF_FILE"
-cat > $TOOLS_CONF_FILE <<EOL
+TRACKER_CONF_FILE="$TARGET_INSTALL_DIR/heron/conf/heron_tracker.yaml"
+echo "Creating tracker conf file: $TRACKER_CONF_FILE"
+cat > $TRACKER_CONF_FILE <<EOL
 statemgrs:
   -
     type: "zookeeper"
